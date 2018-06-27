@@ -8,7 +8,7 @@
 #include <limits>
 #include <memory>
 #include <asio/thread_pool.hpp>
-#include <asio/post.hpp>
+#include <asio/dispatch.hpp>
 #include <Rcpp.h>
 #include "utils.h"
 

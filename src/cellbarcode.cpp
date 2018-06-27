@@ -80,20 +80,24 @@ string Barcode::get_closest_match(const string &bc_seq, int max_mismatch)
     std::vector<int> hamming_dists(barcode_list.size());
     string closest_match;
 
-    const int CHUNK_SIZE = std::max(256, static_cast<int>(barcode_list.size()) / (n_threads_ - 1));
+    int tasks_per_thread = 0;
     int chunk_start = 0;
-    int chunk_end = CHUNK_SIZE;
+    if (n_threads_ > 1) {
+        tasks_per_thread = barcode_list.size() / (n_threads_ - 1);
+        const int CHUNK_SIZE = std::max(256, tasks_per_thread);
+        int chunk_end = CHUNK_SIZE;
 
-    while (chunk_end < barcode_list.size()) {
-        asio::post(*cell_bc_t_pool_, 
-            [&, chunk_start, chunk_end] () {
-                for (int i = chunk_start; i < chunk_end; i++) {
-                    hamming_dists[i] = hamming_distance(barcode_list[i], bc_seq);
+        while (chunk_end < barcode_list.size()) {
+            asio::dispatch(*cell_bc_t_pool_, 
+                [&, chunk_start, chunk_end] () {
+                    for (int i = chunk_start; i < chunk_end; i++) {
+                        hamming_dists[i] = hamming_distance(barcode_list[i], bc_seq);
+                    }
                 }
-            }
-        );
-        chunk_start += CHUNK_SIZE;
-        chunk_end += CHUNK_SIZE;
+            );
+            chunk_start += CHUNK_SIZE;
+            chunk_end += CHUNK_SIZE;
+        }
     }
 
     for (int i = chunk_start; i < barcode_list.size(); i++)
