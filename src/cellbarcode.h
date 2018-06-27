@@ -25,12 +25,16 @@ public:
 
     // if annotation is given
     void read_anno(std::string fn);
+    void set_threads(int nthreads);
 
     std::unordered_map<std::string, std::string> get_count_file_path(std::string out_dir);
 
     std::string get_closest_match(std::string const &bc_seq, int max_mismatch);
 
     friend std::ostream& operator<< (std::ostream& out, const Barcode& obj);
+private:
+    asio::thread_pool *cell_bc_t_pool_;
+    int n_threads_;
 };
 
 #endif

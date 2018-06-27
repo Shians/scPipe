@@ -161,6 +161,7 @@ void rcpp_sc_demultiplex(Rcpp::CharacterVector inbam,
 
   Barcode bar;
   bar.read_anno(c_bc_anno);
+  bar.set_threads(c_nthreads);
 
   Rcpp::Rcout << "demultiplexing reads by barcode..." << "\n";
 

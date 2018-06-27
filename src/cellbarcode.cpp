@@ -3,6 +3,7 @@
 
 using std::string;
 using std::unordered_map;
+using std::unique_ptr;
 using namespace Rcpp;
 
 // read annotation from files, the file should have two columns
@@ -52,6 +53,11 @@ void Barcode::read_anno(string fn)
     }
 }
 
+void Barcode::set_threads(int nthreads) {
+    n_threads_ = std::max(nthreads, 1);
+    cell_bc_t_pool_ = new asio::thread_pool(n_threads_);
+}
+
 unordered_map<string, string> Barcode::get_count_file_path(string out_dir)
 {
     string csv_fmt = ".csv";
@@ -74,10 +80,28 @@ string Barcode::get_closest_match(string const &bc_seq, int max_mismatch)
     std::vector<int> hamming_dists(barcode_list.size());
     string closest_match;
 
-    for (int i = 0; i < barcode_list.size(); i++)
+    const int CHUNK_SIZE = std::max(256, static_cast<int>(barcode_list.size()) / (n_threads_ - 1));
+    int chunk_start = 0;
+    int chunk_end = CHUNK_SIZE;
+
+    while (chunk_end < barcode_list.size()) {
+        asio::post(*cell_bc_t_pool_, 
+            [&, chunk_start, chunk_end] () {
+                for (int i = chunk_start; i < chunk_end; i++) {
+                    hamming_dists[i] = hamming_distance(barcode_list[i], bc_seq);
+                }
+            }
+        );
+        chunk_start += CHUNK_SIZE;
+        chunk_end += CHUNK_SIZE;
+    }
+
+    for (int i = chunk_start; i < barcode_list.size(); i++)
     {
         hamming_dists[i] = hamming_distance(barcode_list[i], bc_seq);
     }
+
+    cell_bc_t_pool_->join();
 
     for (int i = 0; i < hamming_dists.size(); i++)
     {
