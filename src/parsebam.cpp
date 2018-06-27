@@ -78,14 +78,15 @@ int Bamdemultiplex::barcode_demultiplex(string bam_path, int max_mismatch, bool 
     // Early benchmarking shows BAM reading doesn't saturate even 2 cores
     // so capped reading threads to 2
     int out_threads = std::min(nthreads - 1, 2);
+    // make sure we're not using 0 or negative cores
     out_threads = std::max(nthreads, 1);
 
     hts_tpool *p;
-    int queue_size;
+    const int queue_size = 64;
 
     if (out_threads > 1) {
         p = hts_tpool_init(out_threads);
-        bgzf_thread_pool(fp, p, 64);
+        bgzf_thread_pool(fp, p, queue_size);
     }
 
     int mt_idx = -1;
